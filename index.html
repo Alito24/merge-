@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circle Merge Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        #currency-display {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007BFF;
+            margin: 20px;
+        }
+        #currency-display span {
+            font-size: 32px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-gap: 5px;
+            justify-content: center;
+            margin: 20px auto;
+            width: max-content;
+        }
+        .cell {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            background-color: lightgray;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .circle {
+            border-radius: 50%;
+            border: 1px solid black;
+            outline-width: thin;
+            width: 90%;
+            height: 90%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .floating-text {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, 0);
+            color: gold;
+            font-weight: bold;
+            font-size: 20px;
+            text-shadow: 2px 2px 0 black, -2px -2px 0 black, -2px 2px 0 black, 2px -2px 0 black;
+            animation: float-up 0.5s ease-out forwards;
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -50px); }
+        }
+        #controls {
+            margin: 20px;
+        }
+        .upgrade {
+            margin: 10px;
+            padding: 10px;
+            background-color: lightblue;
+            border: 1px solid #007BFF;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        #reset-button, #load-button {
+            margin: 10px;
+            padding: 10px;
+            background-color: lightcoral;
+            border: 1px solid darkred;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            display: inline-block;
+        }
+            
+    </style>
+</head>
+<body>
+    <h1>Merge++</h1>
+    <div id="currency-display">
+        Circles: <span id="currency">0</span> ○
+    </div>
+    <div id="grid"></div>
+    <div id="controls">
+        <div id="upgrade-spawn-rate" class="upgrade">Reduce Spawn Rate (10 Circles)</div>
+        <div id="upgrade-tier" class="upgrade">Increase Spawn Tier (100 Circles)</div>
+        <div id="load-button">Load Game</div>
+        <div id="reset-button">Reset Game</div>
+    </div>
+    <script>
+        // Game Configuration
+// Game Configuration
+const tiers = [
+    { name: "1", image: "img/1.png", production: 3**0 },
+    { name: "2", image: "img/2.png", production: 3**1 },
+    { name: "3", image: "img/3.png", production: 3**2 },
+	{ name: "4", image: "img/4.png", production: 3**3 },
+    { name: "5", image: "img/5.png", production: 3**4 },
+    { name: "6", image: "img/6.png", production: 3**5 },
+	{ name: "7", image: "img/7.png", production: 3**6 },
+    { name: "8", image: "img/8.png", production: 3**7 },
+    { name: "9", image: "img/9.png", production: 3**8 }
+];
+
+// Game State Variables
+let gameState = {
+    circles: 0,
+    spawnRate: 5000,
+    spawnTier: 0,
+    spawnRateCost: 10,
+    tierUpgradeCost: 100,
+    productionTimeCost: 1000,
+    productionInterval: 1000, // 1 second between productions
+    grid: Array(16).fill(null)
+};
+
+// DOM Elements
+const gridElement = document.getElementById('grid');
+const currencyElement = document.getElementById('currency');
+const spawnRateUpgrade = document.getElementById('upgrade-spawn-rate');
+const tierUpgrade = document.getElementById('upgrade-tier');
+const productionTimeUpgrade = document.createElement('div');
+const loadButton = document.getElementById('load-button');
+const resetButton = document.getElementById('reset-button');
+const controlsElement = document.getElementById('controls');
+
+// Modify the initialization function to update upgrade texts
+function initializeGame() {
+    // Create production time upgrade element
+    productionTimeUpgrade.classList.add('upgrade');
+    productionTimeUpgrade.id = 'upgrade-production-time';
+    controlsElement.insertBefore(productionTimeUpgrade, loadButton);
+    
+    // Try to load saved game, otherwise use default state
+    loadGame();
+    
+    // Update ALL upgrade texts AFTER loading the game state
+    updateUpgradeTexts();
+    
+    // Set up event listeners
+    spawnRateUpgrade.addEventListener('click', upgradeSpawnRate);
+    tierUpgrade.addEventListener('click', upgradeTier);
+    productionTimeUpgrade.addEventListener('click', upgradeProductionTime);
+    loadButton.addEventListener('click', loadGame);
+    resetButton.addEventListener('click', resetGame);
+    
+    // Clear existing intervals and set up new ones
+    clearIntervals();
+    setupGameLoops();
+    
+    // Initial render
+    renderGrid();
+    updateUI();
+}
+
+// New function to update all upgrade texts
+function updateUpgradeTexts() {
+    // Spawn Rate Upgrade
+    spawnRateUpgrade.textContent = `Reduce Spawn Rate (${gameState.spawnRateCost} Circles)`;
+    
+    // Tier Upgrade
+    tierUpgrade.textContent = `Increase Spawn Tier (${gameState.tierUpgradeCost} Circles)`;
+    
+    // Production Time Upgrade
+    productionTimeUpgrade.textContent = `Reduce Production Time (${gameState.productionTimeCost} Circles)`;
+}
+
+// Clear existing intervals
+let productionInterval, spawnInterval;
+function clearIntervals() {
+    if (productionInterval) clearInterval(productionInterval);
+    if (spawnInterval) clearInterval(spawnInterval);
+}
+
+// Setup game loops with current production interval
+function setupGameLoops() {
+    productionInterval = setInterval(produceCircles, gameState.productionInterval);
+    spawnInterval = setInterval(spawnCircle, gameState.spawnRate);
+}
+
+function upgradeProductionTime() {
+    if (gameState.circles >= gameState.productionTimeCost) {
+        gameState.circles -= gameState.productionTimeCost;
+        
+        // Reduce production interval (minimum 0.1 seconds)
+        gameState.productionInterval = Math.max(100, gameState.productionInterval - 50);
+        
+        // Increase upgrade cost
+        gameState.productionTimeCost = Math.floor(gameState.productionTimeCost * 20);
+        
+        // Use the new update function
+        updateUpgradeTexts();
+        
+        // Restart intervals with new production time
+        clearIntervals();
+        setupGameLoops();
+        
+        updateUI();
+        saveGame();
+    }
+}
+// Load game state from localStorage
+function loadGame() {
+    const savedData = localStorage.getItem('circleMergeGame');
+    if (savedData) {
+        try {
+            const parsedData = JSON.parse(savedData);
+            
+            // Validate loaded data
+            if (parsedData && parsedData.grid && parsedData.grid.length === 16) {
+                // Completely replace the game state
+                gameState = { ...parsedData };
+                
+                // Ensure backwards compatibility
+                if (!gameState.productionTimeCost) gameState.productionTimeCost = 1000;
+                if (!gameState.productionInterval) gameState.productionInterval = 1000;
+                
+                // Restart intervals with loaded production time
+                clearIntervals();
+                setupGameLoops();
+                
+                // Render grid and update UI
+                renderGrid();
+                updateUI();
+                
+                console.log('Game loaded successfully');
+            } else {
+                console.error('Invalid saved game data');
+            }
+        } catch (error) {
+            console.error('Error loading game:', error);
+        }
+    }
+}
+
+// Save game state to localStorage
+function saveGame() {
+    try {
+        localStorage.setItem('circleMergeGame', JSON.stringify(gameState));
+        console.log('Game saved successfully');
+    } catch (error) {
+        console.error('Error saving game:', error);
+    }
+}
+
+// Reset game to default state
+function resetGame() {
+    gameState = {
+        circles: 0,
+        spawnRate: 5000,
+        spawnTier: 0,
+        spawnRateCost: 10,
+        tierUpgradeCost: 100,
+        grid: Array(16).fill(null)
+    };
+    
+    localStorage.removeItem('circleMergeGame');
+    renderGrid();
+    updateUI();
+}
+
+// Render the grid
+function renderGrid() {
+    gridElement.innerHTML = '';
+    for (let i = 0; i < 16; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        if (gameState.grid[i]) {
+            const circle = document.createElement('div');
+            circle.classList.add('circle');
+            circle.style.backgroundImage = `url('${tiers[gameState.grid[i].tier].image}')`;
+            circle.addEventListener('click', () => selectCircle(i));
+            cell.appendChild(circle);
+        }
+        gridElement.appendChild(cell);
+    }
+}
+
+// Add floating text
+function showFloatingText(cellIndex, amount) {
+    const cell = gridElement.children[cellIndex];
+    const floatingText = document.createElement('div');
+    floatingText.classList.add('floating-text');
+    floatingText.textContent = `+${amount} ○`;
+    
+    // Prevent the floating text from blocking click events
+    floatingText.style.pointerEvents = 'none';
+    
+    cell.appendChild(floatingText);
+    
+    // Use requestAnimationFrame for smoother removal
+    requestAnimationFrame(() => {
+        floatingText.style.animation = 'float-up 0.5s ease-out forwards';
+        
+        // Remove the element after animation completes
+        setTimeout(() => {
+            floatingText.remove();
+        }, 500);
+    });
+}
+// Production logic
+function produceCircles() {
+    gameState.grid.forEach((cell, index) => {
+        if (cell) {
+            const amount = tiers[cell.tier].production;
+            gameState.circles += amount;
+            showFloatingText(index, amount);
+        }
+    });
+    updateUI();
+    saveGame(); // Auto-save after each production cycle
+}
+
+// Spawn a circle
+function spawnCircle() {
+    if (gameState.grid.every(cell => cell !== null)) return; // Grid full
+    let index;
+    do {
+        index = Math.floor(Math.random() * 16);
+    } while (gameState.grid[index] !== null);
+
+    gameState.grid[index] = { tier: gameState.spawnTier };
+    renderGrid();
+    saveGame(); // Auto-save after spawning
+}
+
+// Merge circles
+let selectedCircle = null;
+
+function selectCircle(index) {
+    // Ensure the clicked cell has a circle
+    if (!gameState.grid[index]) return;
+
+    // If no circle was previously selected
+    if (selectedCircle === null) {
+        // Select the current circle
+        selectedCircle = index;
+        
+        // Add visual selection
+        gridElement.children[index].classList.add('selected');
+        return;
+    }
+
+    // If selecting the same circle again, deselect
+    if (selectedCircle === index) {
+        gridElement.children[index].classList.remove('selected');
+        selectedCircle = null;
+        return;
+    }
+
+    // Get the circles for both selected positions
+    const firstCircle = gameState.grid[selectedCircle];
+    const secondCircle = gameState.grid[index];
+
+    // Check merge conditions
+    const canMerge = 
+        firstCircle && 
+        secondCircle && 
+        firstCircle.tier === secondCircle.tier && 
+        firstCircle.tier < tiers.length - 1;
+
+    if (canMerge) {
+        // Merge circles by increasing tier of target circle
+        gameState.grid[index] = { tier: firstCircle.tier + 1 };
+        
+        // Remove source circle
+        gameState.grid[selectedCircle] = null;
+        
+        // Save game state
+        saveGame();
+    }
+
+    // Remove selection classes
+    gridElement.children[selectedCircle].classList.remove('selected');
+    gridElement.children[index].classList.remove('selected');
+
+    // Reset selected circle
+    selectedCircle = null;
+
+    // Render updated grid
+    renderGrid();
+}
+
+// Update the CSS for floating text to ensure it doesn't interfere with interactions
+const floatingTextStyle = document.createElement('style');
+floatingTextStyle.textContent = `
+    .floating-text {
+        pointer-events: none;
+        z-index: 10;
+    }
+    .cell {
+        position: relative;
+    }
+`;
+document.head.appendChild(floatingTextStyle);
+
+// Add this to your existing styles or in a <style> tag
+    const selectStyle = document.createElement('style');
+selectStyle.textContent = `
+    .cell .circle {
+        transition: transform 0.2s ease;
+    }
+    .cell.selected .circle {
+        transform: scale(1.1);
+        border: 3px solid gold;
+        box-sizing: border-box;
+    }
+`;
+document.head.appendChild(selectStyle);
+
+// Modify existing upgrade functions to use updateUpgradeTexts
+function upgradeSpawnRate() {
+    if (gameState.circles >= gameState.spawnRateCost) {
+        gameState.circles -= gameState.spawnRateCost;
+        gameState.spawnRateCost = Math.floor(gameState.spawnRateCost * 5);
+        gameState.spawnRate = Math.max(100, gameState.spawnRate - 100);
+        
+        // Use the new update function
+        updateUpgradeTexts();
+        updateUI();
+        saveGame();
+    }
+}
+
+function upgradeTier() {
+    if (gameState.circles >= gameState.tierUpgradeCost && 
+        gameState.spawnTier < tiers.length - 1) {
+        gameState.circles -= gameState.tierUpgradeCost;
+        gameState.tierUpgradeCost = Math.floor(gameState.tierUpgradeCost * 10);
+        gameState.spawnTier++;
+        
+        // Use the new update function
+        updateUpgradeTexts();
+        
+        gameState.grid.forEach(cell => { 
+            if (cell && cell.tier === gameState.spawnTier - 1) cell.tier++; 
+        });
+        renderGrid();
+        updateUI();
+        saveGame();
+    }
+}
+
+// Update UI
+function updateUI() {
+    currencyElement.textContent = gameState.circles;
+}
+
+// Initialize the game when the page loads
+document.addEventListener('DOMContentLoaded', initializeGame);
+    </script>
+</body>
+</html>
