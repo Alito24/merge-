@@ -306,7 +306,7 @@ function showFloatingText(cellIndex, amount) {
     const cell = gridElement.children[cellIndex];
     const floatingText = document.createElement('div');
     floatingText.classList.add('floating-text');
-    floatingText.textContent = `+${amount} ○`;
+    floatingText.textContent = `+${amount}`;
     
     // Prevent the floating text from blocking click events
     floatingText.style.pointerEvents = 'none';
