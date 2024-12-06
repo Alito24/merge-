@@ -132,7 +132,7 @@ let gameState = {
     spawnTier: 0,
     spawnRateCost: 10,
     tierUpgradeCost: 100,
-    productionTimeCost: 1000,
+    productionTimeCost: 200,
     productionInterval: 1000, // 1 second between productions
     grid: Array(16).fill(null)
 };
@@ -205,8 +205,8 @@ function upgradeProductionTime() {
     if (gameState.circles >= gameState.productionTimeCost) {
         gameState.circles -= gameState.productionTimeCost;
         
-        // Reduce production interval (minimum 0.1 seconds)
-        gameState.productionInterval = Math.max(100, gameState.productionInterval - 50);
+        // Reduce production interval (minimum 0.01 seconds)
+        gameState.productionInterval = Math.max(100, gameState.productionInterval - 10);
         
         // Increase upgrade cost
         gameState.productionTimeCost = Math.floor(gameState.productionTimeCost * 20);
