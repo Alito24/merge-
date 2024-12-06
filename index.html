@@ -206,7 +206,7 @@ function upgradeProductionTime() {
         gameState.circles -= gameState.productionTimeCost;
         
         // Reduce production interval (minimum 0.01 seconds)
-        gameState.productionInterval = Math.max(100, gameState.productionInterval - 10);
+        gameState.productionInterval = Math.max(100, gameState.productionInterval - 50);
         
         // Increase upgrade cost
         gameState.productionTimeCost = Math.floor(gameState.productionTimeCost * 20);
