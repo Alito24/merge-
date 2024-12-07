@@ -206,16 +206,13 @@ function initializeGame() {
     updateUI();
 }
 
-// New function to update all upgrade texts
+// Modify upgrade functions to use formatted costs
 function updateUpgradeTexts() {
-    // Spawn Rate Upgrade
-    spawnRateUpgrade.textContent = `Reduce Spawn Rate (${gameState.spawnRateCost} Circles)`;
+    spawnRateUpgrade.textContent = `Reduce Spawn Rate (${formatNumber(gameState.spawnRateCost)} Circles)`;
     
-    // Tier Upgrade
-    tierUpgrade.textContent = `Increase Spawn Tier (${gameState.tierUpgradeCost} Circles)`;
+    tierUpgrade.textContent = `Increase Spawn Tier (${formatNumber(gameState.tierUpgradeCost)} Circles)`;
     
-    // Production Time Upgrade
-    productionTimeUpgrade.textContent = `Reduce Production Time (${gameState.productionTimeCost} Circles)`;
+    productionTimeUpgrade.textContent = `Reduce Production Time (${formatNumber(gameState.productionTimeCost)} Circles)`;
 }
 
 // Clear existing intervals
@@ -331,28 +328,42 @@ function renderGrid() {
     }
 }
 
-// Add floating text
+// Number notation function
+function formatNumber(num) {
+    const suffixes = [
+        '', 'K', 'M', 'B', 'T', 'Qa', 'Qt', 'Sx', 'Sp', 'Oc', 
+        'No', 'De', 'UDe', 'DDe', 'TDe', 'QaDe', 'QtDe', 'SxDe', 
+        'SpDe', 'OcDe', 'NoDe', 'Vi'
+    ];
+    
+    if (num < 1000) return Math.floor(num).toString();
+    
+    const tier = Math.log10(num) / 3 | 0;
+    const scaled = num / Math.pow(10, tier * 3);
+    
+    return scaled.toFixed(1).replace(/\.?0+$/, '') + suffixes[tier];
+}
+
+// Modify showFloatingText to use formatted number
 function showFloatingText(cellIndex, amount) {
     const cell = gridElement.children[cellIndex];
     const floatingText = document.createElement('div');
     floatingText.classList.add('floating-text');
-    floatingText.textContent = `+${amount}`;
+    floatingText.textContent = `+${formatNumber(amount)}`;
     
-    // Prevent the floating text from blocking click events
     floatingText.style.pointerEvents = 'none';
     
     cell.appendChild(floatingText);
     
-    // Use requestAnimationFrame for smoother removal
     requestAnimationFrame(() => {
         floatingText.style.animation = 'float-up 0.5s ease-out forwards';
         
-        // Remove the element after animation completes
         setTimeout(() => {
             floatingText.remove();
         }, 500);
     });
 }
+
 // Production logic
 function produceCircles() {
     gameState.grid.forEach((cell, index) => {
@@ -498,7 +509,7 @@ function upgradeTier() {
 
 // Update UI
 function updateUI() {
-    currencyElement.textContent = gameState.circles;
+    currencyElement.textContent = formatNumber(gameState.circles);
 }
 
 // Initialize the game when the page loads
