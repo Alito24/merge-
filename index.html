@@ -428,14 +428,14 @@ function selectCircle(index) {
         firstCircle.tier < tiers.length - 1;
 
     if (canMerge) {
+	// Sfx
+	mergeSound.play();
+	    
         // Merge circles by increasing tier of target circle
         gameState.grid[index] = { tier: firstCircle.tier + 1 };
         
         // Remove source circle
         gameState.grid[selectedCircle] = null;
-
-	// Sfx
-	mergeSound.play();
         
         // Save game state
         saveGame();
