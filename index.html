@@ -374,6 +374,10 @@ function produceCircles() {
     saveGame(); // Auto-save after each production cycle
 }
 
+// Audio setup
+const popSound = new Audio('pop.wav');
+const mergeSound = new Audio('checkmate.wav');
+
 // Spawn a circle
 function spawnCircle() {
     if (gameState.grid.every(cell => cell !== null)) return; // Grid full
@@ -383,6 +387,7 @@ function spawnCircle() {
     } while (gameState.grid[index] !== null);
 
     gameState.grid[index] = { tier: gameState.spawnTier };
+    popSound.play(); // Play sound when circle spawns
     renderGrid();
     saveGame(); // Auto-save after spawning
 }
@@ -428,6 +433,9 @@ function selectCircle(index) {
         
         // Remove source circle
         gameState.grid[selectedCircle] = null;
+
+	// Sfx
+	mergeSound.play();
         
         // Save game state
         saveGame();
