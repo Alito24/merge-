@@ -374,9 +374,29 @@ function produceCircles() {
     saveGame(); // Auto-save after each production cycle
 }
 
-// Audio setup
-const popSound = new Audio('pop.wav');
-const mergeSound = new Audio('checkmate.wav');
+
+// Audio pool creation function
+function createSoundPool(soundFile, poolSize = 5) {
+    const audioPool = Array.from({ length: poolSize }, () => new Audio(soundFile));
+    
+    return {
+        play() {
+            // Find first non-playing audio in the pool
+            const availableSound = audioPool.find(sound => sound.paused);
+            
+            if (availableSound) {
+                // Reset sound to start and play
+                availableSound.currentTime = 0;
+                availableSound.play();
+            }
+        }
+    };
+}
+
+
+// Replace single Audio instances with sound pools
+const popSound = createSoundPool('pop.wav');
+const mergeSound = createSoundPool('checkmate.wav');
 
 // Spawn a circle
 function spawnCircle() {
