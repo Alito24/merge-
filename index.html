@@ -155,7 +155,7 @@ const tiers = [
 // Game State Variables
 let gameState = {
     circles: 0,
-    spawnRate: 5000,
+    spawnRate: 4000,
     spawnTier: 0,
     spawnRateCost: 10,
     tierUpgradeCost: 100,
@@ -233,7 +233,7 @@ function upgradeProductionTime() {
         gameState.productionInterval = Math.max(100, gameState.productionInterval - 50);
         
         // Increase upgrade cost
-        gameState.productionTimeCost = Math.floor(gameState.productionTimeCost * 20);
+        gameState.productionTimeCost = Math.floor(gameState.productionTimeCost * 10);
         
         // Use the new update function
         updateUpgradeTexts();
@@ -503,8 +503,8 @@ document.head.appendChild(selectStyle);
 function upgradeSpawnRate() {
     if (gameState.circles >= gameState.spawnRateCost) {
         gameState.circles -= gameState.spawnRateCost;
-        gameState.spawnRateCost = Math.floor(gameState.spawnRateCost * 5);
-        gameState.spawnRate = Math.max(100, gameState.spawnRate - 100);
+        gameState.spawnRateCost = Math.floor(gameState.spawnRateCost * 3);
+        gameState.spawnRate = Math.max(1000, gameState.spawnRate - 100);
         
         // Use the new update function
         updateUpgradeTexts();
@@ -517,7 +517,7 @@ function upgradeTier() {
     if (gameState.circles >= gameState.tierUpgradeCost && 
         gameState.spawnTier < tiers.length - 1) {
         gameState.circles -= gameState.tierUpgradeCost;
-        gameState.tierUpgradeCost = Math.floor(gameState.tierUpgradeCost * 10);
+        gameState.tierUpgradeCost = Math.floor(gameState.tierUpgradeCost * 5);
         gameState.spawnTier++;
         
         // Use the new update function
