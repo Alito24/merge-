@@ -449,19 +449,19 @@ function showFloatingText(cellIndex, amount) {
     });
 }
 
-// Production logic
+// Modify produceCircles to work with variable grid size
 function produceCircles() {
-    gameState.grid.forEach((cell, index) => {
+    for (let i = 0; i < gameState.gridSize * gameState.gridSize; i++) {
+        const cell = gameState.grid[i];
         if (cell) {
             const amount = tiers[cell.tier].production;
             gameState.circles += amount;
-            showFloatingText(index, amount);
+            showFloatingText(i, amount);
         }
-    });
+    }
     updateUI();
     saveGame(); // Auto-save after each production cycle
 }
-
 
 // Audio pool creation function
 function createSoundPool(soundFile, poolSize = 5) {
@@ -486,33 +486,36 @@ function createSoundPool(soundFile, poolSize = 5) {
 const popSound = createSoundPool('pop.wav');
 const mergeSound = createSoundPool('checkmate.wav');
 
-// Spawn a circle
+// Modify spawnCircle to work with variable grid size
 function spawnCircle() {
-    if (gameState.grid.every(cell => cell !== null)) return; // Grid full
+    // Count empty cells in the grid
+    const emptyCells = gameState.grid.reduce((count, cell, index) => 
+        cell === null && index < (gameState.gridSize * gameState.gridSize) ? count + 1 : count, 0);
+    
+    // If no empty cells, return
+    if (emptyCells === 0) return;
+
     let index;
     do {
-        index = Math.floor(Math.random() * 16);
+        index = Math.floor(Math.random() * (gameState.gridSize * gameState.gridSize));
     } while (gameState.grid[index] !== null);
 
     gameState.grid[index] = { tier: gameState.spawnTier };
-    popSound.play(); // Play sound when circle spawns
+    popSound.play();
     renderGrid();
-    saveGame(); // Auto-save after spawning
+    saveGame();
 }
 
 // Merge circles
 let selectedCircle = null;
 
 function selectCircle(index) {
-    // Ensure the clicked cell has a circle
-    if (!gameState.grid[index]) return;
+     // Ensure the clicked cell has a circle within grid bounds
+    if (index >= gameState.gridSize * gameState.gridSize || !gameState.grid[index]) return;
 
     // If no circle was previously selected
     if (selectedCircle === null) {
-        // Select the current circle
         selectedCircle = index;
-        
-        // Add visual selection
         gridElement.children[index].classList.add('selected');
         return;
     }
