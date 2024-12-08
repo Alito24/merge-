@@ -196,6 +196,9 @@ let gameState = {
     tierUpgradeCost: 100,
     productionTimeCost: 200,
     productionInterval: 1000, // 1 second between productions
+    gridSize: 4, // Starting 4x4
+    gridUpgradeCost: 1e33, // 1 Decillion
+    gridSizeLimit: 5, // Maximum grid size
     grid: Array(16).fill(null)
 };
 
@@ -245,6 +248,20 @@ function updateUpgradeTexts() {
     tierUpgrade.textContent = `Increase Spawn Tier (${formatNumber(gameState.tierUpgradeCost)} Circles)`;
     
     productionTimeUpgrade.textContent = `Reduce Production Time (${formatNumber(gameState.productionTimeCost)} Circles)`;
+
+    // Add grid size upgrade text if not at max size
+    if (gameState.gridSize < gameState.gridSizeLimit) {
+        const gridUpgradeButton = document.createElement('div');
+        gridUpgradeButton.classList.add('upgrade');
+        gridUpgradeButton.id = 'upgrade-grid-size';
+        gridUpgradeButton.textContent = `Expand Grid (${formatNumber(gameState.gridUpgradeCost)} Circles) (CLEARS THE GRID!)`;
+        gridUpgradeButton.addEventListener('click', upgradeGridSize);
+        
+        // Remove existing grid upgrade button if exists
+        const existingButton = document.getElementById('upgrade-grid-size');
+        if (existingButton) existingButton.remove();
+        
+        controlsElement.insertBefore(gridUpgradeButton, loadButton);
 }
 
 // Clear existing intervals
@@ -281,39 +298,68 @@ function upgradeProductionTime() {
         saveGame();
     }
 }
-// Load game state from localStorage
+
+// Add grid expansion upgrade function
+function upgradeGridSize() {
+    if (gameState.circles >= gameState.gridUpgradeCost && 
+        gameState.gridSize < gameState.gridSizeLimit) {
+        gameState.circles -= gameState.gridUpgradeCost;
+        
+        // Increase grid size
+        gameState.gridSize++;
+        
+        // Increase upgrade cost (squared)
+        gameState.gridUpgradeCost *= gameState.gridUpgradeCost;
+        
+        // Expand grid array
+        gameState.grid = Array(gameState.gridSize * gameState.gridSize).fill(null);
+        
+        // Update grid CSS
+        gridElement.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 100px)`;
+        
+        updateUpgradeTexts();
+        renderGrid();
+        updateUI();
+        saveGame();
+    }
+}	   
+
+	
+// Modify loadGame and saveGame to handle grid size
 function loadGame() {
     const savedData = localStorage.getItem('circleMergeGame');
     if (savedData) {
         try {
             const parsedData = JSON.parse(savedData);
             
-            // Validate loaded data
-            if (parsedData && parsedData.grid && parsedData.grid.length === 16) {
-                // Completely replace the game state
+            if (parsedData && parsedData.grid) {
                 gameState = { ...parsedData };
                 
-                // Ensure backwards compatibility
-                if (!gameState.productionTimeCost) gameState.productionTimeCost = 1000;
-                if (!gameState.productionInterval) gameState.productionInterval = 1000;
+                // Ensure gridSize exists, default to 4
+                gameState.gridSize = gameState.gridSize || 4;
+                gameState.gridSizeLimit = gameState.gridSizeLimit || 5;
                 
-                // Restart intervals with loaded production time
+                // Ensure grid is correct size
+                if (gameState.grid.length !== gameState.gridSize * gameState.gridSize) {
+                    gameState.grid = Array(gameState.gridSize * gameState.gridSize).fill(null);
+                }
+                
+                // Restart intervals
                 clearIntervals();
                 setupGameLoops();
                 
-                // Render grid and update UI
                 renderGrid();
                 updateUI();
+                updateUpgradeTexts();
                 
                 console.log('Game loaded successfully');
-            } else {
-                console.error('Invalid saved game data');
             }
         } catch (error) {
             console.error('Error loading game:', error);
         }
     }
 }
+
 
 // Save game state to localStorage
 function saveGame() {
@@ -325,7 +371,7 @@ function saveGame() {
     }
 }
 
-// Reset game to default state
+// Modify resetGame to reset grid size
 function resetGame() {
     gameState = {
         circles: 0,
@@ -333,20 +379,26 @@ function resetGame() {
         spawnTier: 0,
         spawnRateCost: 10,
         tierUpgradeCost: 100,
-	productionTimeCost: 200,
-	productionInterval: 1000,
+        productionTimeCost: 200,
+        productionInterval: 1000,
+        gridSize: 4,
+        gridSizeLimit: 5,
+        gridUpgradeCost: 1e33,
         grid: Array(16).fill(null)
     };
     
     localStorage.removeItem('circleMergeGame');
     renderGrid();
+    updateUpgradeTexts();
     updateUI();
 }
 
-// Render the grid
+// Modify renderGrid to work with variable grid size
 function renderGrid() {
     gridElement.innerHTML = '';
-    for (let i = 0; i < 16; i++) {
+    gridElement.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 100px)`;
+    
+    for (let i = 0; i < gameState.gridSize * gameState.gridSize; i++) {
         const cell = document.createElement('div');
         cell.classList.add('cell');
         if (gameState.grid[i]) {
@@ -534,6 +586,23 @@ selectStyle.textContent = `
 `;
 document.head.appendChild(selectStyle);
 
+// Modify existing CSS to support dynamic grid
+const gridStyle = document.createElement('style');
+gridStyle.textContent = `
+    #grid {
+        display: grid;
+        grid-gap: 5px;
+        justify-content: center;
+        margin: 20px auto;
+        width: max-content;
+    }
+    .cell {
+        width: 100px;
+        height: 100px;
+    }
+`;
+document.head.appendChild(gridStyle);
+	
 // Modify existing upgrade functions to use updateUpgradeTexts
 function upgradeSpawnRate() {
     if (gameState.circles >= gameState.spawnRateCost) {
