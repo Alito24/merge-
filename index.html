@@ -606,7 +606,7 @@ document.head.appendChild(gridStyle);
 	
 // Modify existing upgrade functions to use updateUpgradeTexts
 function upgradeSpawnRate() {
-    if (gameState.circles >= gameState.spawnRateCost) {
+    if (gameState.circles >= gameState.spawnRateCost && gameState.spawnRate > 1000) {
         gameState.circles -= gameState.spawnRateCost;
         gameState.spawnRateCost = Math.floor(gameState.spawnRateCost * 3);
         gameState.spawnRate = Math.max(1000, gameState.spawnRate - 100);
