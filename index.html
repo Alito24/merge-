@@ -279,10 +279,10 @@ function setupGameLoops() {
 }
 
 function upgradeProductionTime() {
-    if (gameState.circles >= gameState.productionTimeCost) {
+    if (gameState.circles >= gameState.productionTimeCost && gameState.productionInterval > 100) {
         gameState.circles -= gameState.productionTimeCost;
         
-        // Reduce production interval (minimum 0.01 seconds)
+        // Reduce production interval (minimum 0.1 seconds)
         gameState.productionInterval = Math.max(100, gameState.productionInterval - 50);
         
         // Increase upgrade cost
